@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TorrentVault</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--accent:#6c5ce7;--accent2:#a29bfe;--green:#00b894;--red:#e74c3c;--yellow:#fdcb6e;--text:#e0e0e0;--text2:#888;--radius:10px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent2);cursor:pointer}
+button{cursor:pointer;border:none;border-radius:6px;padding:8px 16px;font-size:14px;font-weight:600;transition:all .2s}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:var(--text);font-size:14px;width:100%;transition:border-color .2s}
+input:focus{outline:none;border-color:var(--accent)}
+.toast-container{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{padding:14px 20px;border-radius:8px;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideIn .3s ease,fadeOut .4s ease 3.6s forwards;max-width:380px;pointer-events:auto}
+.toast-success{background:var(--green)}.toast-error{background:var(--red)}.toast-info{background:var(--accent)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeOut{to{opacity:0;transform:translateY(-10px)}}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
+.spinner-dark{border-color:var(--border);border-top-color:var(--accent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);gap:10px}
+.stat-loading{animation:pulse 1.5s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at center,rgba(108,92,231,.08) 0%,transparent 70%)}
+.login-box{background:var(--card);padding:40px;border-radius:var(--radius);width:400px;border:1px solid var(--border);transition:transform .2s}
+.login-box.shake{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.login-icon{text-align:center;font-size:48px;margin-bottom:12px;opacity:.7}
+.login-box h1{text-align:center;margin-bottom:8px;font-size:28px}
+.login-box p{text-align:center;color:var(--text2);margin-bottom:24px;font-size:14px}
+.login-box input{margin-bottom:12px}
+.password-wrapper{position:relative;margin-bottom:12px}
+.password-wrapper input{margin-bottom:0;padding-right:44px}
+.password-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;padding:4px;font-size:18px}
+.btn-login{width:100%;padding:12px;background:var(--accent);color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-login:hover:not(:disabled){background:var(--accent2);color:#000}
+.login-error{color:var(--red);text-align:center;margin-top:8px;font-size:13px;min-height:20px}
+.login-footer{text-align:center;margin-top:16px;font-size:13px;color:var(--text2)}
+#app{display:none}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+header h1{font-size:20px;display:flex;align-items:center;gap:8px}
+header h1 span{color:var(--accent2)}
+.header-right{display:flex;align-items:center;gap:12px}
+#global-stats{font-size:13px;color:var(--text2);display:flex;gap:16px}
+#global-stats .stat{display:flex;align-items:center;gap:4px}
+.dl-arrow{color:var(--green)}.ul-arrow{color:var(--accent2)}
+.tier-badge{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.tier-free{background:rgba(253,203,110,.15);color:var(--yellow)}
+.tier-premium{background:rgba(108,92,231,.15);color:var(--accent2)}
+#logout-btn{background:transparent;color:var(--text2);border:1px solid var(--border);padding:6px 14px;font-size:13px}
+#logout-btn:hover{border-color:var(--red);color:var(--red)}
+.ad-banner{background:linear-gradient(90deg,rgba(108,92,231,.1),rgba(0,184,148,.1));border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px;margin-bottom:16px;text-align:center;font-size:13px}
+.ad-banner a{color:var(--accent2);text-decoration:none;font-weight:600}
+.ad-banner .ad-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+main{max-width:1200px;margin:0 auto;padding:24px}
+.tab-bar{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-btn{background:transparent;color:var(--text2);padding:10px 18px;border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:none;font-size:13px;position:relative;bottom:-1px;white-space:nowrap;flex-shrink:0}
+.tab-btn.active{background:var(--card);color:var(--text);border-color:var(--border);border-bottom:1px solid var(--card)}
+.tab-btn:hover:not(.active){color:var(--text)}
+.tab-panel{display:none}.tab-panel.active{display:block;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.add-section,.admin-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;transition:transform .15s}
+.admin-card:hover{transform:translateY(-1px)}
+.add-section h2,.admin-card h2{font-size:16px;margin-bottom:16px;color:var(--text2);display:flex;justify-content:space-between;align-items:center}
+.add-row,.inline-form{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.add-row input[type="text"]{flex:1;min-width:200px}
+.inline-form input{max-width:200px}
+.inline-form label,.add-row label{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.inline-form input[type="checkbox"],.add-row input[type="checkbox"]{width:auto}
+.btn-primary{background:var(--accent);color:#fff;display:inline-flex;align-items:center;gap:6px}
+.btn-primary:hover:not(:disabled){background:var(--accent2);color:#000}
+.btn-secondary{background:transparent;color:var(--text2);border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px}
+.btn-secondary:hover:not(:disabled){border-color:var(--accent)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:5px}
+.torrent-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;transition:border-color .2s;animation:fadeIn .3s ease}
+.torrent-card:hover{border-color:var(--accent)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.torrent-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.torrent-name{font-weight:600;font-size:15px;word-break:break-all;flex:1;margin-right:12px}
+.torrent-state{font-size:12px;padding:3px 10px;border-radius:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.state-downloading{background:rgba(0,184,148,.15);color:var(--green)}
+.state-seeding{background:rgba(108,92,231,.15);color:var(--accent2)}
+.state-paused{background:rgba(253,203,110,.15);color:var(--yellow)}
+.state-finished{background:rgba(0,184,148,.15);color:var(--green)}
+.state-checking,.state-fetching_metadata,.state-resuming,.state-allocating{background:rgba(253,203,110,.15);color:var(--yellow)}
+.state-error{background:rgba(231,76,60,.15);color:var(--red)}
+.progress-bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s;background:linear-gradient(90deg,var(--accent),var(--green))}
+.torrent-stats{display:flex;gap:20px;flex-wrap:wrap;font-size:13px;color:var(--text2);margin-bottom:10px}
+.torrent-stats span{display:flex;align-items:center;gap:4px}
+.torrent-actions{display:flex;gap:8px;flex-wrap:wrap}
+.torrent-actions button{padding:5px 12px;font-size:12px;border-radius:5px}
+.btn-pause{background:rgba(253,203,110,.15);color:var(--yellow)}
+.btn-resume{background:rgba(0,184,148,.15);color:var(--green)}
+.btn-delete{background:rgba(231,76,60,.1);color:var(--red)}
+.btn-delete:hover{background:rgba(231,76,60,.25)}
+.btn-info{background:rgba(108,92,231,.1);color:var(--accent2)}
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);width:90%;max-width:700px;max-height:85vh;overflow-y:auto;padding:24px;animation:scaleIn .2s ease}
+@keyframes scaleIn{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h2{margin-bottom:16px;font-size:18px}
+.modal-close{float:right;background:transparent;color:var(--text2);font-size:20px;padding:4px 8px}
+.modal-close:hover{color:var(--red)}
+.detail-section{margin-bottom:16px}
+.detail-section h3{font-size:14px;color:var(--accent2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.detail-table,.data-table{width:100%;font-size:13px;border-collapse:collapse}
+.detail-table td,.data-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.detail-table td:first-child{color:var(--text2);white-space:nowrap;width:140px}
+.data-table th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--accent2);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.data-table tr:hover td{background:rgba(108,92,231,.05)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(0,184,148,.15);color:var(--green)}
+.badge-red{background:rgba(231,76,60,.15);color:var(--red)}
+.badge-yellow{background:rgba(253,203,110,.15);color:var(--yellow)}
+.badge-purple{background:rgba(108,92,231,.15);color:var(--accent2)}
+.pagination{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px;font-size:13px;color:var(--text2)}
+.file-list{font-size:13px;max-height:200px;overflow-y:auto}
+.file-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)}
+.peer-list,.tracker-list{font-size:12px;max-height:150px;overflow-y:auto}
+.peer-item,.tracker-item{padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+.piece-map{display:flex;flex-wrap:wrap;gap:1px;max-height:60px;overflow:hidden}
+.piece{width:4px;height:4px;border-radius:1px}.piece.have{background:var(--green)}.piece.missing{background:var(--border)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.mono{font-family:monospace;font-size:12px}.text-muted{color:var(--text2)}
+#confirm-modal .modal{max-width:420px;text-align:center}
+#confirm-modal p{color:var(--text2);margin:16px 0;line-height:1.5}
+.confirm-actions{display:flex;gap:12px;justify-content:center}
+.tier-limit-bar{font-size:13px;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.api-key-display{background:var(--bg);padding:10px;border-radius:6px;font-family:monospace;font-size:13px;word-break:break-all;margin:10px 0;border:1px solid var(--accent)}
+@media(max-width:600px){
+  header h1{font-size:16px}.login-box{width:calc(100% - 32px);padding:24px}
+  .add-row,.inline-form{flex-direction:column}.torrent-stats{gap:10px}
+  .torrent-actions button{flex:1;text-align:center}.modal{width:95%;padding:16px}
+  .data-table{font-size:11px}.tab-btn{padding:8px 10px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="toast-container" id="toast-container"></div>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-box" id="login-box">
+    <div class="login-icon">&#128274;</div>
+    <h1>TorrentVault</h1>
+    <p id="login-subtitle">Sign in to manage your torrents</p>
+    <div id="login-form">
+      <input type="text" id="login-user" placeholder="Username" value="admin" autofocus>
+      <div class="password-wrapper">
+        <input type="password" id="login-pass" placeholder="Password">
+        <button type="button" class="password-toggle" onclick="togglePassword()">&#128065;</button>
+      </div>
+      <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div class="login-error" id="login-error"></div>
+      <div class="login-footer"><a onclick="showRegisterForm()">Have an invite code? Register here</a></div>
+    </div>
+    <div id="register-form" style="display:none">
+      <input type="text" id="reg-code" placeholder="Invite Code" style="margin-bottom:12px">
+      <input type="text" id="reg-user" placeholder="Username" style="margin-bottom:12px">
+      <div class="password-wrapper">
+        <input type="password" id="reg-pass" placeholder="Password">
+        <button type="button" class="password-toggle" onclick="toggleRegPassword()">&#128065;</button>
+      </div>
+      <button class="btn-login" id="reg-btn" onclick="doRegister()" style="margin-top:12px">Create Account</button>
+      <div class="login-error" id="reg-error"></div>
+      <div class="login-footer"><a onclick="showLoginForm()">Back to Sign In</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <h1>Torrent<span>Vault</span></h1>
+    <div class="header-right">
+      <div id="global-stats">
+        <span class="stat"><span class="dl-arrow">&#9660;</span> <span id="g-dl">0 B/s</span></span>
+        <span class="stat"><span class="ul-arrow">&#9650;</span> <span id="g-ul">0 B/s</span></span>
+        <span class="stat" id="g-dht"></span>
+      </div>
+      <span class="tier-badge" id="tier-badge"></span>
+      <button id="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </header>
+  <div id="ad-banner-top" style="max-width:1200px;margin:16px auto 0;padding:0 24px"></div>
+  <main>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('torrents')">Torrents</button>
+      <button class="tab-btn" onclick="switchTab('profile')">Profile</button>
+      <button class="tab-btn" onclick="switchTab('audit')" id="tab-audit-btn">Audit</button>
+      <button class="tab-btn" onclick="switchTab('users')" id="tab-users-btn">Users</button>
+      <button class="tab-btn" onclick="switchTab('history')" id="tab-history-btn">History</button>
+      <button class="tab-btn" onclick="switchTab('invites')" id="tab-invites-btn">Invites</button>
+      <button class="tab-btn" onclick="switchTab('ads')" id="tab-ads-btn">Ads</button>
+      <button class="tab-btn" onclick="switchTab('subs')" id="tab-subs-btn">Plans</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+        <div class="admin-card" style="text-align:center;padding:24px"><div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Download</div><div id="dash-dl" class="stat-loading" style="font-size:26px;font-weight:700;color:var(--green)">--</div></div>
+        <div class="admin-card" style="text-align:center;padding:24px"><div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Upload</div><div id="dash-ul" class="stat-loading" style="font-size:26px;font-weight:700;color:var(--accent2)">--</div></div>
+        <div class="admin-card" style="text-align:center;padding:24px"><div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Torrents</div><div id="dash-active" class="stat-loading" style="font-size:26px;font-weight:700">--</div></div>
+        <div class="admin-card" style="text-align:center;padding:24px"><div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">DHT</div><div id="dash-dht" class="stat-loading" style="font-size:26px;font-weight:700;color:var(--yellow)">--</div></div>
+        <div class="admin-card" style="text-align:center;padding:24px"><div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Users</div><div id="dash-users" class="stat-loading" style="font-size:26px;font-weight:700">--</div></div>
+      </div>
+      <div class="admin-card"><h2>Recent Activity</h2><div id="dash-recent"><div class="loading-overlay"><div class="spinner spinner-dark"></div></div></div></div>
+    </div>
+
+    <!-- TORRENTS -->
+    <div class="tab-panel" id="tab-torrents">
+      <div id="tier-limit-info" class="tier-limit-bar" style="display:none"></div>
+      <div class="add-section"><h2>Add Torrent</h2>
+        <div class="add-row" style="margin-bottom:10px"><input type="text" id="magnet-input" placeholder="Paste magnet URI..."><label><input type="checkbox" id="sequential-check"> Sequential</label><button class="btn-primary" id="btn-add-magnet" onclick="addMagnet()">Add Magnet</button></div>
+        <div class="add-row"><input type="file" id="torrent-file" accept=".torrent"><button class="btn-secondary" id="btn-add-file" onclick="addFile()">Upload .torrent</button></div>
+      </div>
+      <div class="torrent-list"><h2>Torrents (<span id="torrent-count">0</span>)</h2><div id="torrent-container"></div></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="tab-panel" id="tab-profile">
+      <div class="admin-card"><h2>Subscription</h2><div id="profile-sub"></div></div>
+      <div class="admin-card"><h2>API Keys <button class="btn-primary btn-sm" onclick="showNewKeyForm()">New Key</button></h2>
+        <div id="new-key-form" style="display:none;margin-bottom:12px" class="inline-form"><input type="text" id="new-key-name" placeholder="Key name (e.g. CI Pipeline)"><button class="btn-primary btn-sm" id="btn-gen-key" onclick="generateApiKey()">Generate</button></div>
+        <div id="new-key-display" style="display:none"></div>
+        <div id="api-keys-list"></div>
+      </div>
+      <div class="admin-card"><h2>Active Sessions</h2><div id="sessions-list"></div>
+        <div style="margin-top:12px"><button class="btn-delete btn-sm" onclick="revokeAllSessions()">Revoke All Other Sessions</button></div>
+      </div>
+    </div>
+
+    <!-- AUDIT, USERS, HISTORY (same as before) -->
+    <div class="tab-panel" id="tab-audit"><div class="admin-card"><h2>Audit Log <span class="text-muted" id="audit-total"></span></h2><div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><select id="audit-action-filter" style="max-width:180px" onchange="loadAudit()"><option value="">All actions</option><option value="login">Login</option><option value="login_failed">Login Failed</option><option value="register">Register</option><option value="add_magnet">Add Magnet</option><option value="add_file">Add File</option><option value="pause">Pause</option><option value="resume">Resume</option><option value="delete">Delete</option><option value="user_create">User Create</option><option value="user_update">User Update</option><option value="user_delete">User Delete</option><option value="invite_create">Invite Create</option><option value="subscription_change">Subscription Change</option><option value="api_key_create">API Key Create</option></select><input type="text" id="audit-user-filter" placeholder="Filter by user..." style="max-width:180px" onchange="loadAudit()"></div><div id="audit-table-wrap"></div><div class="pagination" id="audit-pagination"></div></div></div>
+
+    <div class="tab-panel" id="tab-users"><div class="admin-card"><h2>User Management</h2><div class="inline-form"><input type="text" id="new-username" placeholder="Username"><input type="password" id="new-password" placeholder="Password"><label><input type="checkbox" id="new-is-admin"> Admin</label><button class="btn-primary btn-sm" id="btn-create-user" onclick="createUser()">Create User</button></div><div id="users-table-wrap"></div></div></div>
+
+    <div class="tab-panel" id="tab-history"><div class="admin-card"><h2>Torrent History</h2><div style="margin-bottom:12px"><select id="history-status-filter" style="max-width:180px" onchange="loadHistory()"><option value="">All</option><option value="active">Active</option><option value="completed">Completed</option><option value="removed">Removed</option></select></div><div id="history-table-wrap"></div><div class="pagination" id="history-pagination"></div></div></div>
+
+    <!-- INVITES (admin) -->
+    <div class="tab-panel" id="tab-invites"><div class="admin-card"><h2>Invite Codes</h2>
+      <div class="inline-form" style="margin-bottom:16px"><input type="number" id="invite-max-uses" value="1" min="1" style="max-width:100px" placeholder="Max uses"><input type="number" id="invite-hours" placeholder="Expires in hours (optional)" style="max-width:200px"><button class="btn-primary btn-sm" onclick="createInvite()">Generate Code</button></div>
+      <div id="invites-table-wrap"></div>
+    </div></div>
+
+    <!-- ADS (admin) -->
+    <div class="tab-panel" id="tab-ads"><div class="admin-card"><h2>Ad Slots</h2>
+      <div class="inline-form" style="margin-bottom:16px;flex-wrap:wrap"><input type="text" id="ad-name" placeholder="Name" style="max-width:150px"><select id="ad-position" style="max-width:120px"><option value="header">Header</option><option value="footer">Footer</option><option value="inline">Inline</option></select><select id="ad-type" style="max-width:100px"><option value="text">Text</option><option value="image">Image</option></select><input type="text" id="ad-content" placeholder="Content/Image URL" style="max-width:250px"><input type="text" id="ad-link" placeholder="Link URL" style="max-width:200px"><button class="btn-primary btn-sm" onclick="createAd()">Add</button></div>
+      <div id="ads-table-wrap"></div>
+    </div></div>
+
+    <!-- SUBSCRIPTIONS (admin) -->
+    <div class="tab-panel" id="tab-subs"><div class="admin-card"><h2>Subscription Plans</h2><div id="plans-list"></div></div></div>
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="detail-modal"><div class="modal"><button class="modal-close" onclick="closeModal()">&times;</button><h2 id="modal-name"></h2><div id="modal-body"></div></div></div>
+<div class="modal-overlay" id="confirm-modal"><div class="modal" style="max-width:420px;text-align:center"><h2 id="confirm-title">Confirm</h2><p id="confirm-message"></p><div class="confirm-actions"><button class="btn-secondary" onclick="resolveConfirm(false)">Cancel</button><button class="btn-delete" onclick="resolveConfirm(true)">Confirm</button></div></div></div>
+
+<script>
+const API='';let token=localStorage.getItem('tv_token')||'';let tp=null;let ws=null;let dashInt=null;let confirmRes=null;
+function auth(){return{'Authorization':'Bearer '+token,'Content-Type':'application/json'};}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function fmtSize(b){if(b==null)return'0 B';const u=['B','KB','MB','GB','TB'];let i=0;while(b>=1024&&i<u.length-1){b/=1024;i++;}return b.toFixed(1)+' '+u[i];}
+function fmtEta(s){if(!s||s<=0)return'--';if(s>86400)return Math.floor(s/86400)+'d';if(s>3600)return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';if(s>60)return Math.floor(s/60)+'m';return s+'s';}
+function fmtTime(iso){if(!iso)return'-';return new Date(iso).toLocaleString();}
+function parseJwt(t){try{return JSON.parse(atob(t.split('.')[1]));}catch(e){return null;}}
+function isAdmin(){return tp&&tp.admin;}
+function showToast(m,t='info'){const c=document.getElementById('toast-container');const el=document.createElement('div');el.className='toast toast-'+t;el.textContent=m;c.appendChild(el);setTimeout(()=>el.remove(),4000);}
+function showConfirm(t,m){return new Promise(r=>{confirmRes=r;document.getElementById('confirm-title').textContent=t;document.getElementById('confirm-message').textContent=m;document.getElementById('confirm-modal').classList.add('active');});}
+function resolveConfirm(v){document.getElementById('confirm-modal').classList.remove('active');if(confirmRes){confirmRes(v);confirmRes=null;}}
+function togglePassword(){const i=document.getElementById('login-pass');i.type=i.type==='password'?'text':'password';}
+function toggleRegPassword(){const i=document.getElementById('reg-pass');i.type=i.type==='password'?'text':'password';}
+function showRegisterForm(){document.getElementById('login-form').style.display='none';document.getElementById('register-form').style.display='block';document.getElementById('login-subtitle').textContent='Create your account';}
+function showLoginForm(){document.getElementById('login-form').style.display='block';document.getElementById('register-form').style.display='none';document.getElementById('login-subtitle').textContent='Sign in to manage your torrents';}
+
+async function doLogin(){
+  const u=document.getElementById('login-user').value,p=document.getElementById('login-pass').value,btn=document.getElementById('login-btn'),box=document.getElementById('login-box'),err=document.getElementById('login-error');
+  err.textContent='';btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Signing in...';
+  try{const r=await fetch(API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    if(!r.ok){const d=await r.json();err.textContent=d.detail||'Invalid credentials';box.classList.add('shake');setTimeout(()=>box.classList.remove('shake'),400);return;}
+    const d=await r.json();token=d.access_token;localStorage.setItem('tv_token',token);tp=parseJwt(token);showToast('Welcome back, '+u,'success');showApp();
+  }catch(e){err.textContent='Connection error';}finally{btn.disabled=false;btn.innerHTML='Sign In';}
+}
+async function doRegister(){
+  const code=document.getElementById('reg-code').value.trim(),u=document.getElementById('reg-user').value.trim(),p=document.getElementById('reg-pass').value,btn=document.getElementById('reg-btn'),err=document.getElementById('reg-error');
+  err.textContent='';if(!u||!p){err.textContent='Username and password required';return;}
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Creating...';
+  try{const r=await fetch(API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,invite_code:code||null})});
+    if(!r.ok){const d=await r.json();err.textContent=d.detail||'Registration failed';return;}
+    showToast('Account created! Please sign in.','success');showLoginForm();document.getElementById('login-user').value=u;
+  }catch(e){err.textContent='Connection error';}finally{btn.disabled=false;btn.innerHTML='Create Account';}
+}
+function doLogout(){token='';tp=null;localStorage.removeItem('tv_token');if(ws)ws.close();if(dashInt){clearInterval(dashInt);dashInt=null;}document.getElementById('app').style.display='none';document.getElementById('login-page').style.display='flex';}
+
+function switchTab(n){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.querySelector(`[onclick="switchTab('${n}')"]`).classList.add('active');document.getElementById('tab-'+n).classList.add('active');
+  ({dashboard:loadDashboard,audit:loadAudit,users:loadUsers,history:loadHistory,profile:loadProfile,invites:loadInvites,ads:loadAds,subs:loadPlans}[n]||function(){})();}
+
+async function showApp(){
+  document.getElementById('login-page').style.display='none';document.getElementById('app').style.display='block';
+  if(!tp)tp=parseJwt(token);
+  ['tab-audit-btn','tab-users-btn','tab-history-btn','tab-invites-btn','tab-ads-btn','tab-subs-btn'].forEach(id=>document.getElementById(id).style.display=isAdmin()?'':'none');
+  const tb=document.getElementById('tier-badge');
+  tb.textContent=tp.tier==='premium'?'PREMIUM':'FREE';tb.className='tier-badge '+(tp.tier==='premium'?'tier-premium':'tier-free');
+  connectWS();loadDashboard();loadAds_public();
+  if(dashInt)clearInterval(dashInt);dashInt=setInterval(()=>{if(document.getElementById('tab-dashboard').classList.contains('active'))loadDashboard();},30000);
+}
+
+// WEBSOCKET
+function connectWS(){if(ws)ws.close();const p=location.protocol==='https:'?'wss:':'ws:';ws=new WebSocket(p+'//'+location.host+'/ws/torrents?token='+token);ws.onmessage=e=>{const d=JSON.parse(e.data);renderTorrents(d.torrents);renderGlobalStats(d.stats);updateDashLive(d.stats);};ws.onclose=()=>setTimeout(connectWS,3000);}
+
+// DASHBOARD
+async function loadDashboard(){try{const r=await fetch(API+'/api/dashboard',{headers:auth()});if(!r.ok)return;const d=await r.json();const l=d.libtorrent||{};document.querySelectorAll('.stat-loading').forEach(e=>e.classList.remove('stat-loading'));document.getElementById('dash-dl').textContent=fmtSize(l.total_download_rate||0)+'/s';document.getElementById('dash-ul').textContent=fmtSize(l.total_upload_rate||0)+'/s';document.getElementById('dash-active').textContent=l.total_torrents||0;document.getElementById('dash-dht').textContent=l.dht_nodes||0;document.getElementById('dash-users').textContent=(d.users||{}).active||0;
+const rc=(d.audit||{}).recent||[];if(!rc.length){document.getElementById('dash-recent').innerHTML='<p class="text-muted">No activity</p>';return;}let h='<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th></tr></thead><tbody>';rc.forEach(e=>{const ab={login:'badge-green',login_failed:'badge-red',register:'badge-green',add_magnet:'badge-purple',delete:'badge-red',pause:'badge-yellow',resume:'badge-green'}[e.action]||'badge-purple';h+=`<tr><td class="mono">${fmtTime(e.timestamp)}</td><td>${esc(e.username)}</td><td><span class="badge ${ab}">${esc(e.action)}</span></td><td class="mono">${esc(e.target||'-')}</td></tr>`;});h+='</tbody></table>';document.getElementById('dash-recent').innerHTML=h;}catch(e){}}
+function updateDashLive(s){if(!s||!document.getElementById('tab-dashboard').classList.contains('active'))return;document.getElementById('dash-dl').textContent=fmtSize(s.total_download_rate||0)+'/s';document.getElementById('dash-ul').textContent=fmtSize(s.total_upload_rate||0)+'/s';document.getElementById('dash-active').textContent=s.total_torrents||0;document.getElementById('dash-dht').textContent=s.dht_nodes||0;}
+
+function renderGlobalStats(s){if(!s)return;document.getElementById('g-dl').textContent=fmtSize(s.total_download_rate)+'/s';document.getElementById('g-ul').textContent=fmtSize(s.total_upload_rate)+'/s';document.getElementById('g-dht').textContent='DHT: '+(s.dht_nodes||0);}
+function renderTorrents(ts){const c=document.getElementById('torrent-container');document.getElementById('torrent-count').textContent=ts.length;
+  if(tp&&tp.tier==='free'){const li=document.getElementById('tier-limit-info');li.style.display='flex';li.innerHTML=`Active: <b>${ts.length}</b> / <b>3</b> (Free tier) &mdash; <a onclick="switchTab('profile')">Upgrade to Premium</a>`;}else{document.getElementById('tier-limit-info').style.display='none';}
+  if(!ts.length){c.innerHTML='<div class="empty-state"><h3>No torrents yet</h3><p>Add a magnet link or .torrent file</p></div>';return;}
+  c.innerHTML=ts.map(t=>{const sc='state-'+(t.error?'error':t.paused?'paused':t.state),sl=t.error?'Error':t.paused?'Paused':t.state;return`<div class="torrent-card"><div class="torrent-header"><div class="torrent-name">${esc(t.name)}</div><span class="torrent-state ${sc}">${sl}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${t.progress}%"></div></div><div class="torrent-stats"><span><b>${t.progress}%</b></span><span><span class="dl-arrow">&#9660;</span>${fmtSize(t.download_rate)}/s</span><span><span class="ul-arrow">&#9650;</span>${fmtSize(t.upload_rate)}/s</span><span>${fmtSize(t.downloaded)}/${fmtSize(t.total_size)}</span><span>ETA:${fmtEta(t.eta_seconds)}</span><span>P:${t.num_peers} S:${t.num_seeds}</span></div><div class="torrent-actions">${t.paused?`<button class="btn-resume" onclick="resumeT('${t.info_hash}')">Resume</button>`:`<button class="btn-pause" onclick="pauseT('${t.info_hash}')">Pause</button>`}<button class="btn-info" onclick="showDetail('${t.info_hash}')">Details</button><button class="btn-delete" onclick="deleteT('${t.info_hash}',false)">Remove</button><button class="btn-delete" onclick="deleteT('${t.info_hash}',true)">Del+Files</button></div></div>`;}).join('');}
+
+// TORRENT ACTIONS
+async function addMagnet(){const u=document.getElementById('magnet-input').value.trim();if(!u)return;const b=document.getElementById('btn-add-magnet'),s=document.getElementById('sequential-check').checked;b.disabled=true;b.innerHTML='<span class="spinner"></span>';try{const r=await fetch(API+'/api/torrents/add/magnet',{method:'POST',headers:auth(),body:JSON.stringify({magnet_uri:u,sequential:s})});if(r.ok){document.getElementById('magnet-input').value='';showToast('Magnet added','success');}else{const d=await r.json();showToast(d.detail||'Failed','error');}}catch(e){showToast('Error','error');}finally{b.disabled=false;b.innerHTML='Add Magnet';}}
+async function addFile(){const fi=document.getElementById('torrent-file');if(!fi.files.length)return;const b=document.getElementById('btn-add-file');b.disabled=true;b.innerHTML='<span class="spinner"></span>';try{const fd=new FormData();fd.append('file',fi.files[0]);const r=await fetch(API+'/api/torrents/add/file',{method:'POST',headers:{'Authorization':'Bearer '+token},body:fd});if(r.ok){fi.value='';showToast('File added','success');}else{const d=await r.json();showToast(d.detail||'Failed','error');}}catch(e){showToast('Error','error');}finally{b.disabled=false;b.innerHTML='Upload .torrent';}}
+async function pauseT(h){await fetch(API+'/api/torrents/'+h+'/pause',{method:'POST',headers:auth()});showToast('Paused','info');}
+async function resumeT(h){await fetch(API+'/api/torrents/'+h+'/resume',{method:'POST',headers:auth()});showToast('Resumed','success');}
+async function deleteT(h,df){if(!await showConfirm(df?'Delete+Files':'Remove',df?'Delete torrent and all files?':'Remove torrent?'))return;await fetch(API+'/api/torrents/'+h+'?delete_files='+df,{method:'DELETE',headers:auth()});showToast('Removed','success');}
+
+// DETAIL MODAL
+async function showDetail(hash){const r=await fetch(API+'/api/torrents/'+hash,{headers:auth()});if(!r.ok)return;const t=await r.json();document.getElementById('modal-name').textContent=t.name;let h=`<div class="detail-section"><h3>Info</h3><table class="detail-table"><tr><td>Hash</td><td class="mono">${t.info_hash}</td></tr><tr><td>State</td><td>${t.paused?'Paused':t.state}</td></tr><tr><td>Progress</td><td>${t.progress}%</td></tr><tr><td>Size</td><td>${fmtSize(t.total_size)}</td></tr><tr><td>Downloaded</td><td>${fmtSize(t.downloaded)}</td></tr><tr><td>Uploaded</td><td>${fmtSize(t.uploaded)}</td></tr><tr><td>Ratio</td><td>${t.ratio}</td></tr><tr><td>Peers/Seeds</td><td>${t.num_peers}/${t.num_seeds}</td></tr><tr><td>Path</td><td>${esc(t.save_path)}</td></tr></table></div>`;
+if(t.files&&t.files.length)h+=`<div class="detail-section"><h3>Files(${t.files.length})</h3><div class="file-list">${t.files.map(f=>`<div class="file-item"><span>${esc(f.name)}</span><span>${fmtSize(f.size)}</span></div>`).join('')}</div></div>`;
+if(t.pieces_map&&t.pieces_map.length)h+=`<div class="detail-section"><h3>Pieces(${t.pieces_have}/${t.pieces_total})</h3><div class="piece-map">${t.pieces_map.map(p=>`<div class="piece ${p?'have':'missing'}"></div>`).join('')}</div></div>`;
+document.getElementById('modal-body').innerHTML=h;document.getElementById('detail-modal').classList.add('active');}
+function closeModal(){document.getElementById('detail-modal').classList.remove('active');}
+document.getElementById('detail-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+document.getElementById('confirm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)resolveConfirm(false);});
+
+// PROFILE
+async function loadProfile(){
+  // Subscription
+  try{const r=await fetch(API+'/api/subscription',{headers:auth()});if(r.ok){const d=await r.json();document.getElementById('profile-sub').innerHTML=`<table class="detail-table"><tr><td>Tier</td><td><span class="badge ${d.tier==='premium'?'badge-purple':'badge-yellow'}">${d.tier.toUpperCase()}</span></td></tr><tr><td>Max Torrents</td><td>${d.max_active_torrents===-1?'Unlimited':d.max_active_torrents}</td></tr><tr><td>Speed Cap</td><td>${d.speed_cap_kbps===-1?'Unlimited':d.speed_cap_kbps+' KB/s'}</td></tr><tr><td>Status</td><td>${d.subscription_status}</td></tr></table>`;}}catch(e){}
+  // API Keys
+  try{const r=await fetch(API+'/api/auth/api-keys',{headers:auth()});if(r.ok){const keys=await r.json();if(!keys.length){document.getElementById('api-keys-list').innerHTML='<p class="text-muted">No API keys</p>';}else{let h='<table class="data-table"><thead><tr><th>Name</th><th>Prefix</th><th>Active</th><th>Created</th><th>Last Used</th><th></th></tr></thead><tbody>';keys.forEach(k=>{h+=`<tr><td>${esc(k.name)}</td><td class="mono">${esc(k.prefix)}...</td><td><span class="badge ${k.is_active?'badge-green':'badge-red'}">${k.is_active?'Active':'Revoked'}</span></td><td class="mono">${fmtTime(k.created_at)}</td><td class="mono">${fmtTime(k.last_used_at)}</td><td>${k.is_active?`<button class="btn-sm btn-delete" onclick="revokeKey(${k.id})">Revoke</button>`:''}</td></tr>`;});h+='</tbody></table>';document.getElementById('api-keys-list').innerHTML=h;}}}catch(e){}
+  // Sessions
+  try{const r=await fetch(API+'/api/sessions',{headers:auth()});if(r.ok){const ss=await r.json();if(!ss.length){document.getElementById('sessions-list').innerHTML='<p class="text-muted">No active sessions</p>';}else{let h='<table class="data-table"><thead><tr><th>IP</th><th>Browser</th><th>Created</th><th>Last Active</th><th></th></tr></thead><tbody>';ss.forEach(s=>{h+=`<tr><td class="mono">${esc(s.ip_address)}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.user_agent||'-')}</td><td class="mono">${fmtTime(s.created_at)}</td><td class="mono">${fmtTime(s.last_active_at)}</td><td>${s.is_current?'<span class="badge badge-green">Current</span>':`<button class="btn-sm btn-delete" onclick="revokeSession(${s.id})">Revoke</button>`}</td></tr>`;});h+='</tbody></table>';document.getElementById('sessions-list').innerHTML=h;}}}catch(e){}
+}
+function showNewKeyForm(){document.getElementById('new-key-form').style.display='flex';document.getElementById('new-key-display').style.display='none';}
+async function generateApiKey(){const n=document.getElementById('new-key-name').value.trim();if(!n){showToast('Key name required','error');return;}const b=document.getElementById('btn-gen-key');b.disabled=true;try{const r=await fetch(API+'/api/auth/api-keys',{method:'POST',headers:auth(),body:JSON.stringify({name:n})});if(r.ok){const d=await r.json();document.getElementById('new-key-display').style.display='block';document.getElementById('new-key-display').innerHTML='<div class="api-key-display">'+esc(d.key)+'</div><p class="text-muted" style="font-size:12px">Copy this key now. It won\'t be shown again.</p>';document.getElementById('new-key-name').value='';showToast('API key created','success');loadProfile();}else{const d=await r.json();showToast(d.detail||'Failed','error');}}catch(e){showToast('Error','error');}finally{b.disabled=false;}}
+async function revokeKey(id){if(!await showConfirm('Revoke Key','This API key will stop working immediately.'))return;await fetch(API+'/api/auth/api-keys/'+id,{method:'DELETE',headers:auth()});showToast('Key revoked','success');loadProfile();}
+async function revokeSession(id){await fetch(API+'/api/sessions/'+id,{method:'DELETE',headers:auth()});showToast('Session revoked','success');loadProfile();}
+async function revokeAllSessions(){if(!await showConfirm('Revoke All','Log out all other sessions?'))return;await fetch(API+'/api/sessions',{method:'DELETE',headers:auth()});showToast('All other sessions revoked','success');loadProfile();}
+
+// ADS (public fetch for banners)
+async function loadAds_public(){if(tp&&tp.tier==='premium'){document.getElementById('ad-banner-top').innerHTML='';return;}
+try{const r=await fetch(API+'/api/ads?position=header');if(!r.ok)return;const ads=await r.json();if(ads.length){const a=ads[0];document.getElementById('ad-banner-top').innerHTML=`<div class="ad-banner"><div class="ad-label">Advertisement</div>${a.ad_type==='image'?`<a href="${esc(a.link_url||'#')}" target="_blank"><img src="${esc(a.content)}" style="max-width:100%;max-height:80px;border-radius:4px" alt="ad"></a>`:`<a href="${esc(a.link_url||'#')}" target="_blank">${esc(a.content)}</a>`}</div>`;}else{document.getElementById('ad-banner-top').innerHTML='';}}catch(e){}}
+
+// AUDIT
+async function loadAudit(o=0){const a=document.getElementById('audit-action-filter').value,u=document.getElementById('audit-user-filter').value.trim();let url=API+'/api/audit?limit=50&offset='+o;if(a)url+='&action='+a;if(u)url+='&username='+u;const r=await fetch(url,{headers:auth()});if(!r.ok)return;const d=await r.json();document.getElementById('audit-total').textContent=`(${d.total})`;if(!d.entries.length){document.getElementById('audit-table-wrap').innerHTML='<p class="text-muted">No entries</p>';document.getElementById('audit-pagination').innerHTML='';return;}let h='<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>IP</th></tr></thead><tbody>';d.entries.forEach(e=>{const ab={login:'badge-green',login_failed:'badge-red',register:'badge-green',delete:'badge-red',pause:'badge-yellow',resume:'badge-green'}[e.action]||'badge-purple';h+=`<tr><td class="mono">${fmtTime(e.timestamp)}</td><td>${esc(e.username)}</td><td><span class="badge ${ab}">${esc(e.action)}</span></td><td class="mono">${esc(e.target||'-')}</td><td class="mono">${esc(e.ip_address||'-')}</td></tr>`;});h+='</tbody></table>';document.getElementById('audit-table-wrap').innerHTML=h;let pg='';if(o>0)pg+=`<button class="btn-secondary btn-sm" onclick="loadAudit(${Math.max(0,o-50)})">Prev</button>`;pg+=`<span>${o+1}-${Math.min(o+50,d.total)} of ${d.total}</span>`;if(o+50<d.total)pg+=`<button class="btn-secondary btn-sm" onclick="loadAudit(${o+50})">Next</button>`;document.getElementById('audit-pagination').innerHTML=pg;}
+
+// USERS
+async function loadUsers(){const r=await fetch(API+'/api/users',{headers:auth()});if(!r.ok)return;const us=await r.json();let h='<table class="data-table"><thead><tr><th>User</th><th>Role</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>';us.forEach(u=>{h+=`<tr><td><b>${esc(u.username)}</b></td><td><span class="badge ${u.is_admin?'badge-purple':'badge-green'}">${u.is_admin?'Admin':'User'}</span></td><td><span class="badge ${u.tier==='premium'?'badge-purple':'badge-yellow'}">${u.tier}</span></td><td><span class="badge ${u.is_active?'badge-green':'badge-red'}">${u.is_active?'Active':'Off'}</span></td><td class="mono">${fmtTime(u.last_login)}</td><td>${u.username!=='admin'?`<button class="btn-sm ${u.is_active?'btn-pause':'btn-resume'}" onclick="toggleUser('${esc(u.username)}',${!u.is_active})">${u.is_active?'Disable':'Enable'}</button> <button class="btn-sm btn-delete" onclick="delUser('${esc(u.username)}')">Del</button>`:''}</td></tr>`;});h+='</tbody></table>';document.getElementById('users-table-wrap').innerHTML=h;}
+async function createUser(){const un=document.getElementById('new-username').value.trim(),pw=document.getElementById('new-password').value,ia=document.getElementById('new-is-admin').checked;if(!un||!pw){showToast('Required','error');return;}const r=await fetch(API+'/api/users',{method:'POST',headers:auth(),body:JSON.stringify({username:un,password:pw,is_admin:ia})});if(r.ok){document.getElementById('new-username').value='';document.getElementById('new-password').value='';showToast(un+' created','success');loadUsers();}else{const d=await r.json();showToast(d.detail||'Failed','error');}}
+async function toggleUser(u,a){await fetch(API+'/api/users/'+u,{method:'PUT',headers:auth(),body:JSON.stringify({is_active:a})});loadUsers();}
+async function delUser(u){if(!await showConfirm('Delete','Delete user "'+u+'"?'))return;await fetch(API+'/api/users/'+u,{method:'DELETE',headers:auth()});showToast('Deleted','success');loadUsers();}
+
+// HISTORY
+async function loadHistory(o=0){const st=document.getElementById('history-status-filter').value;let url=API+'/api/torrents/history?limit=50&offset='+o;if(st)url+='&status='+st;const r=await fetch(url,{headers:auth()});if(!r.ok)return;const rows=await r.json();if(!rows.length){document.getElementById('history-table-wrap').innerHTML='<p class="text-muted">No records</p>';return;}let h='<table class="data-table"><thead><tr><th>Name</th><th>Source</th><th>By</th><th>Status</th><th>Added</th></tr></thead><tbody>';rows.forEach(r=>{const sb={active:'badge-green',completed:'badge-purple',removed:'badge-red'}[r.status]||'badge-yellow';h+=`<tr><td>${esc(r.name||'?')}</td><td><span class="badge badge-purple">${esc(r.source)}</span></td><td>${esc(r.added_by)}</td><td><span class="badge ${sb}">${esc(r.status)}</span></td><td class="mono">${fmtTime(r.created_at)}</td></tr>`;});h+='</tbody></table>';document.getElementById('history-table-wrap').innerHTML=h;}
+
+// INVITES
+async function loadInvites(){const r=await fetch(API+'/api/invites',{headers:auth()});if(!r.ok)return;const invs=await r.json();if(!invs.length){document.getElementById('invites-table-wrap').innerHTML='<p class="text-muted">No invite codes</p>';return;}let h='<table class="data-table"><thead><tr><th>Code</th><th>Uses</th><th>Active</th><th>Created By</th><th>Expires</th><th></th></tr></thead><tbody>';invs.forEach(i=>{h+=`<tr><td class="mono"><b>${esc(i.code)}</b></td><td>${i.use_count}/${i.max_uses}</td><td><span class="badge ${i.is_active?'badge-green':'badge-red'}">${i.is_active?'Yes':'No'}</span></td><td>${esc(i.created_by)}</td><td class="mono">${fmtTime(i.expires_at)}</td><td>${i.is_active?`<button class="btn-sm btn-delete" onclick="deactivateInvite('${esc(i.code)}')">Deactivate</button>`:''}</td></tr>`;});h+='</tbody></table>';document.getElementById('invites-table-wrap').innerHTML=h;}
+async function createInvite(){const mu=parseInt(document.getElementById('invite-max-uses').value)||1,eh=parseInt(document.getElementById('invite-hours').value)||null;const r=await fetch(API+'/api/invites',{method:'POST',headers:auth(),body:JSON.stringify({max_uses:mu,expires_in_hours:eh})});if(r.ok){const d=await r.json();showToast('Invite: '+d.code,'success');loadInvites();}else{const d=await r.json();showToast(d.detail||'Failed','error');}}
+async function deactivateInvite(c){await fetch(API+'/api/invites/'+c,{method:'DELETE',headers:auth()});showToast('Deactivated','success');loadInvites();}
+
+// ADS (admin)
+async function loadAds(){const r=await fetch(API+'/api/admin/ads',{headers:auth()});if(!r.ok)return;const ads=await r.json();if(!ads.length){document.getElementById('ads-table-wrap').innerHTML='<p class="text-muted">No ad slots</p>';return;}let h='<table class="data-table"><thead><tr><th>Name</th><th>Position</th><th>Type</th><th>Active</th><th>Content</th><th></th></tr></thead><tbody>';ads.forEach(a=>{h+=`<tr><td>${esc(a.name)}</td><td><span class="badge badge-purple">${esc(a.position)}</span></td><td>${esc(a.ad_type)}</td><td><span class="badge ${a.is_active?'badge-green':'badge-red'}">${a.is_active?'Yes':'No'}</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.content)}</td><td><button class="btn-sm btn-delete" onclick="deleteAd(${a.id})">Del</button></td></tr>`;});h+='</tbody></table>';document.getElementById('ads-table-wrap').innerHTML=h;}
+async function createAd(){const n=document.getElementById('ad-name').value.trim(),p=document.getElementById('ad-position').value,t=document.getElementById('ad-type').value,c=document.getElementById('ad-content').value.trim(),l=document.getElementById('ad-link').value.trim();if(!n||!c){showToast('Name and content required','error');return;}const r=await fetch(API+'/api/admin/ads',{method:'POST',headers:auth(),body:JSON.stringify({name:n,position:p,ad_type:t,content:c,link_url:l||null})});if(r.ok){showToast('Ad created','success');['ad-name','ad-content','ad-link'].forEach(id=>document.getElementById(id).value='');loadAds();}else{const d=await r.json();showToast(d.detail||'Failed','error');}}
+async function deleteAd(id){if(!await showConfirm('Delete Ad','Remove this ad slot?'))return;await fetch(API+'/api/admin/ads/'+id,{method:'DELETE',headers:auth()});showToast('Deleted','success');loadAds();}
+
+// PLANS
+async function loadPlans(){const r=await fetch(API+'/api/plans');if(!r.ok)return;const plans=await r.json();let h='<table class="data-table"><thead><tr><th>Name</th><th>Tier</th><th>Torrents</th><th>Speed</th><th>Price</th><th>Billing</th></tr></thead><tbody>';plans.forEach(p=>{h+=`<tr><td><b>${esc(p.name)}</b></td><td><span class="badge ${p.tier==='premium'?'badge-purple':'badge-yellow'}">${p.tier}</span></td><td>${p.max_active_torrents===-1?'Unlimited':p.max_active_torrents}</td><td>${p.speed_cap_kbps===-1?'Unlimited':p.speed_cap_kbps+' KB/s'}</td><td>${p.price_cents===0?'Free':'$'+(p.price_cents/100).toFixed(2)}</td><td>${p.billing_period||'-'}</td></tr>`;});h+='</tbody></table>';document.getElementById('plans-list').innerHTML=h;}
+
+// KEYBOARD
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();resolveConfirm(false);}if(e.key==='Enter'&&document.getElementById('login-page').style.display!=='none')doLogin();});
+
+// INIT
+if(token){tp=parseJwt(token);fetch(API+'/api/health').then(r=>{if(r.ok)showApp();else doLogout();}).catch(()=>doLogout());}else{document.getElementById('login-page').style.display='flex';}
+</script>
+</body>
+</html>
